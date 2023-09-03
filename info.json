@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "name": "SolidFuels",
+  "title": "Solid Fuels",
+  "factorio_version": "1.1",
+  "author": "PondGrass",
+  "dependencies": [
+    "base >= 1.1"
+  ],
+  "description": "Mod adding more burnable fuels."
+}
