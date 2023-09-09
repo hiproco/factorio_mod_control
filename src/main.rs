@@ -6,7 +6,7 @@ use tinyjson::*;
 
 fn main() {
     let mut args = std::env::args().skip(1).collect::<VecDeque<_>>();
-    match args[1].as_str() {
+    match args[0].as_str() {
         "init" => init(&args.make_contiguous()),
         "new" => new(args.make_contiguous()),
         "update" => update(),
@@ -15,19 +15,16 @@ fn main() {
 }
 
 fn new(args: &[String]) {
-    if let Some(name) = args.iter().next() {
+    if let Some(name) = args.get(1) {
         std::fs::create_dir(name).unwrap();
         std::env::set_current_dir(name).unwrap();
         init(args);
     }
 }
 fn init(args: &[String]) {
-    let name: JsonValue = std::env::current_dir()
+    let name = std::env::current_dir()
         .ok()
-        .and_then(|p| {
-            p.file_name()
-                .and_then(|f| f.to_str().and_then(|s| s.parse().ok()))
-        })
+        .and_then(|p| p.file_name().and_then(|f| f.to_str().map(|s| s.to_owned())))
         .unwrap();
     const TEMPLATE: &str = r#"{
         "name": "temp",
@@ -40,16 +37,16 @@ fn init(args: &[String]) {
     let mut info = TEMPLATE.parse::<JsonValue>().unwrap();
     let map: &mut HashMap<_, _> = info.get_mut().unwrap();
     if let Some(modname) = map.get_mut("name") {
-        *modname = name.clone();
+        *modname = name.clone().into();
     }
     if let Some(title) = map.get_mut("title") {
-        *title = name;
+        *title = name.into();
     }
     if let Some(author) = map.get_mut("author") {
         // use some config
     }
 
-    if std::path::Path::new("info.json")
+    if !std::path::Path::new("info.json")
         .try_exists()
         .unwrap_or(false)
     {
@@ -85,10 +82,7 @@ fn update() {
                 let JsonValue::String(value) = value else {
                     return;
                 };
-                version = value
-                    .split('.')
-                    .filter_map(|v| v.parse().ok())
-                    .collect::<Vec<u32>>();
+                version = version_vector(&value);
                 let mut args = std::env::args();
                 let arg = args.nth(2).unwrap_or("".to_string());
                 match arg.as_str() {
@@ -102,10 +96,7 @@ fn update() {
                         version[0] += 1;
                     }
                     "set-version" => {
-                        version = args
-                            .next()
-                            .map(|v| v.split('.').filter_map(|v| v.parse().ok()).collect())
-                            .unwrap_or(version);
+                        version = args.next().map(|v| version_vector(v)).unwrap_or(version);
                     }
                     _ => {}
                 }
@@ -147,3 +138,11 @@ fn update() {
     std::fs::write("info.json", json.format().unwrap().as_bytes());
 }
 fn add() {}
+
+fn version_vector(version: impl AsRef<str>) -> Vec<u32> {
+    version
+        .as_ref()
+        .split('.')
+        .flat_map(|s| s.parse())
+        .collect()
+}
