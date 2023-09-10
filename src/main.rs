@@ -43,7 +43,10 @@ fn init(args: &[String]) {
         *title = name.into();
     }
     if let Some(author) = map.get_mut("author") {
-        // use some config
+        let config_author = config::config().author();
+        *author = config_author.to_string().into();
+        // choose configuration format
+        // place in ~/.config/fmc/ folder
     }
 
     if !std::path::Path::new("info.json")
@@ -139,10 +142,38 @@ fn update() {
 }
 fn add() {}
 
+fn set(args: &[String]) {}
+
 fn version_vector(version: impl AsRef<str>) -> Vec<u32> {
     version
         .as_ref()
         .split('.')
         .flat_map(|s| s.parse())
         .collect()
+}
+
+mod config {
+    use std::{io::Read, sync::OnceLock};
+
+    #[derive(Debug)]
+    pub struct Config {
+        author: String,
+        // update zip directory?
+    }
+    impl Config {
+        pub fn author(&self) -> &str {
+            &self.author
+        }
+    }
+
+    static CONFIG: OnceLock<Config> = OnceLock::new();
+    pub fn config() -> &'static Config {
+        let init = || {
+            let mut f = std::fs::File::open("~/.config/fmc/config.config").unwrap();
+            let mut author = String::new();
+            f.read_to_string(&mut author).unwrap();
+            Config { author }
+        };
+        CONFIG.get_or_init(init)
+    }
 }
